@@ -1,1 +1,1 @@
-<h1 style="color: #00ddff; text-align: center">KAM</h1>
+<h1 style="color: #00ddff">KAM</h1>
