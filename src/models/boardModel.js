@@ -96,6 +96,10 @@ const update = async (boardId, updateData) => {
       }
     })
 
+    if (updateData.columnOrderIds) {
+      updateData.columnOrderIds = updateData.columnOrderIds.map(cardId => new ObjectId(String(cardId)))
+    }
+
     const result = await GET_DB().collection(BOARD_COLLECTION_NAME).findOneAndUpdate(
       { _id: new ObjectId(String(boardId)) },
       { $set: updateData },
