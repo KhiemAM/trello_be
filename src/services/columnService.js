@@ -1,5 +1,8 @@
 import { columnModel } from '~/models/columnModel'
 import { boardModel } from '~/models/boardModel'
+import { cardModel } from '~/models/cardModel'
+import ApiError from '~/utils/ApiError'
+import { StatusCodes } from 'http-status-codes'
 
 const createNew = async (reqBody) => {
   try {
@@ -23,14 +26,14 @@ const createNew = async (reqBody) => {
   }
 }
 
-const update = async (boardId, reqBody) => {
+const update = async (columnId, reqBody) => {
   try {
     const updateData = {
       ...reqBody,
       updatedAt: Date.now()
     }
 
-    const updatedColumn = await columnModel.update(boardId, updateData)
+    const updatedColumn = await columnModel.update(columnId, updateData)
 
     return updatedColumn
   } catch (error) {
@@ -38,7 +41,27 @@ const update = async (boardId, reqBody) => {
   }
 }
 
+const deleteItem = async (columnId) => {
+  try {
+    const targetColumn = await columnModel.findOneById(columnId)
+    if (!targetColumn) {
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Board not found')
+    }
+
+    await columnModel.deleteOneById(columnId)
+
+    await cardModel.deleteManyByColumnId(columnId)
+
+    await boardModel.pullColumnOrderIds(targetColumn)
+
+    return { deleteResult: 'Column and its cards deleted successfully' }
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
 export const columnService = {
   createNew,
-  update
+  update,
+  deleteItem
 }
