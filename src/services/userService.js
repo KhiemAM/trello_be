@@ -45,6 +45,37 @@ const createNew = async (reqBody) => {
   }
 }
 
+const verifyAccount = async (reqBody) => {
+  try {
+    const existUser = await userModel.findOneByEmail(reqBody.email)
+    if (!existUser) throw new ApiError(StatusCodes.NOT_FOUND, 'Account not found')
+    if (existUser.isActive) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Account is already verified')
+    if (existUser.verifyToken !== reqBody.token) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Invalid token')
+
+    const updateData = {
+      isActive: true,
+      verifyToken: null
+    }
+
+    const result = await userModel.update(existUser._id, updateData)
+
+    return pickUser(result)
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
+const login = async (reqBody) => {
+  try {
+    //
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
+
 export const userService = {
-  createNew
+  createNew,
+  verifyAccount,
+  login
 }
