@@ -8,6 +8,7 @@ import { WEBSITE_DOMAIN } from '~/utils/constants'
 import { BrevoProvider } from '~/providers/BrevoProvider'
 import { env } from '~/config/environment'
 import { JwtProvider } from '~/providers/JwtProvider'
+import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
 
 const createNew = async (reqBody) => {
   try {
@@ -82,9 +83,14 @@ const login = async (reqBody) => {
       userInfo,
       env.ACCESS_TOKEN_SECRET_SIGNATURE,
       env.ACCESS_TOKEN_LIFE
+      // 5
+    )
+    const refreshToken = await JwtProvider.generateToken(
+      userInfo,
+      env.REFRESH_TOKEN_SECRET_SIGNATURE,
+      env.REFRESH_TOKEN_LIFE
       // 10
     )
-    const refreshToken = await JwtProvider.generateToken(userInfo, env.REFRESH_TOKEN_SECRET_SIGNATURE, env.REFRESH_TOKEN_LIFE)
 
     return {
       accessToken,
@@ -96,9 +102,65 @@ const login = async (reqBody) => {
   }
 }
 
+const refreshToken = async (clientRefreshToken) => {
+  try {
+    const refreshTokenDecoded = await JwtProvider.verifyToken(clientRefreshToken, env.REFRESH_TOKEN_SECRET_SIGNATURE)
+
+    const userInfo = {
+      _id: refreshTokenDecoded._id,
+      email: refreshTokenDecoded.email
+    }
+
+    const accessToken = await JwtProvider.generateToken(
+      userInfo,
+      env.ACCESS_TOKEN_SECRET_SIGNATURE,
+      env.ACCESS_TOKEN_LIFE
+      // 5
+    )
+
+    return { accessToken }
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
+const update = async (userId, reqBody, userAvatarFile) => {
+  try {
+    const existUser = await userModel.findOneById(userId)
+    if (!existUser) throw new ApiError(StatusCodes.NOT_FOUND, 'Account not found')
+    if (!existUser.isActive) throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Account is not active')
+
+    let updatedUser = {
+
+    }
+
+    if (reqBody.current_password && reqBody.new_password) {
+      if (!bcryptjs.compareSync(reqBody.current_password, existUser.password)) {
+        throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Your current password is incorrect')
+      }
+      updatedUser = await userModel.update(existUser._id, {
+        password: bcryptjs.hashSync(reqBody.new_password, 8)
+      })
+    } else if (userAvatarFile) {
+      //Upload file to cloudinary
+      const uploadResult = await CloudinaryProvider.streamUpload(userAvatarFile.buffer, 'users')
+      updatedUser = await userModel.update(existUser._id, {
+        avatar: uploadResult.secure_url
+      })
+    } else {
+      updatedUser = await userModel.update(existUser._id, reqBody)
+    }
+
+    return pickUser(updatedUser)
+  } catch (error) {
+    throw new Error(error)
+  }
+}
 
 export const userService = {
   createNew,
   verifyAccount,
-  login
+  login,
+  refreshToken,
+  update
 }
